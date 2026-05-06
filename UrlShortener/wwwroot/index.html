@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SNIP — URL Shortener</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0c0c0f;
+    --surface: #131318;
+    --border: #222230;
+    --border-focus: #4f4fff;
+    --accent: #4f4fff;
+    --accent-glow: rgba(79,79,255,0.18);
+    --danger: #ff4f6a;
+    --success: #00e0a1;
+    --muted: #555570;
+    --text: #e8e8f0;
+    --text-dim: #8888aa;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --radius: 8px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 760px;
+    padding: 0 20px 80px;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 52px 0 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    animation: fadeDown 0.5s ease both;
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(36px, 8vw, 64px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    animation: fadeDown 0.5s 0.08s ease both;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .tagline {
+    font-size: 14px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    animation: fadeDown 0.5s 0.16s ease both;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.5s 0.2s ease both;
+  }
+
+  .card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  /* ── Form ── */
+  .field {
+    margin-bottom: 14px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    letter-spacing: 0.04em;
+  }
+
+  input[type="text"],
+  input[type="url"],
+  input[type="date"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 11px 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  input::placeholder { color: var(--muted); }
+
+  .row { display: flex; gap: 14px; }
+  .row .field { flex: 1; }
+
+  /* ── Button ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 12px 22px;
+    transition: transform 0.1s, box-shadow 0.2s, opacity 0.2s;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    width: 100%;
+    justify-content: center;
+    margin-top: 6px;
+    box-shadow: 0 0 0 0 var(--accent-glow);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 0 24px 4px var(--accent-glow);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  .btn-ghost:hover {
+    color: var(--text);
+    border-color: var(--muted);
+  }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid transparent;
+    font-size: 12px;
+    padding: 4px 8px;
+    opacity: 0.7;
+  }
+
+  .btn-danger:hover { opacity: 1; background: rgba(255,79,106,0.1); }
+
+  /* ── Result box ── */
+  #result-box {
+    display: none;
+    background: var(--bg);
+    border: 1px solid var(--success);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-top: 18px;
+  }
+
+  #result-box.visible { display: block; animation: fadeUp 0.3s ease; }
+
+  .result-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--success);
+    margin-bottom: 8px;
+  }
+
+  .result-url {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--text);
+    word-break: break-all;
+    cursor: pointer;
+  }
+
+  .result-url:hover { color: var(--accent); }
+
+  .result-meta {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .copy-hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* ── Error box ── */
+  #error-box {
+    display: none;
+    background: rgba(255,79,106,0.08);
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--danger);
+  }
+
+  #error-box.visible { display: block; animation: fadeUp 0.3s ease; }
+
+  /* ── Links table ── */
+  .links-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  #links-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  #links-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .link-row {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: border-color 0.2s;
+    animation: fadeUp 0.3s ease;
+  }
+
+  .link-row:hover { border-color: var(--border-focus); }
+
+  .link-info { flex: 1; min-width: 0; }
+
+  .link-short {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .link-short:hover { text-decoration: underline; }
+
+  .link-original {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+
+  .link-stats {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+
+  .stat {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .stat strong {
+    display: block;
+    font-size: 15px;
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .badge {
+    font-size: 10px;
+    font-family: var(--mono);
+    background: rgba(79,79,255,0.15);
+    color: var(--accent);
+    border: 1px solid rgba(79,79,255,0.3);
+    padding: 2px 7px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+  }
+
+  #empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: 13px;
+    display: none;
+  }
+
+  /* spinner */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  /* ── Keyframes ── */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* copied toast */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: var(--success);
+    color: #000;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 10px 22px;
+    border-radius: 999px;
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div class="logo">link tool</div>
+    <h1>SN<span>I</span>P</h1>
+    <p class="tagline">Shorten. Share. Track.</p>
+  </header>
+
+  <!-- Shorten form -->
+  <div class="card">
+    <div class="card-title">// new short link</div>
+
+    <div class="field">
+      <label>Long URL *</label>
+      <input type="url" id="url-input" placeholder="https://example.com/very/long/path?query=value" />
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Custom alias <span style="opacity:.5">(optional)</span></label>
+        <input type="text" id="alias-input" placeholder="my-link" maxlength="50" />
+      </div>
+      <div class="field">
+        <label>Expires on <span style="opacity:.5">(optional)</span></label>
+        <input type="date" id="expires-input" />
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="shorten-btn" onclick="shorten()">
+      Shorten URL
+    </button>
+
+    <!-- Result -->
+    <div id="result-box">
+      <div class="result-label">✓ ready to share</div>
+      <div class="result-url" id="result-url" onclick="copyResult()"></div>
+      <p class="copy-hint">Click to copy · redirects to original URL</p>
+      <div class="result-meta">
+        <span id="result-code"></span>
+        <span id="result-expires"></span>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="error-box"></div>
+  </div>
+
+  <!-- Links list -->
+  <div class="card" style="animation-delay:0.28s">
+    <div class="links-header">
+      <div class="card-title" style="margin:0">// your links</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="links-count">–</span>
+        <button class="btn btn-ghost" onclick="loadLinks()">↺ Refresh</button>
+      </div>
+    </div>
+    <div id="links-list"></div>
+    <div id="empty-state">No links yet. Shorten your first URL above.</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';  // same origin
+
+async function shorten() {
+  const url     = document.getElementById('url-input').value.trim();
+  const alias   = document.getElementById('alias-input').value.trim();
+  const expires = document.getElementById('expires-input').value;
+
+  hideMessages();
+
+  if (!url) { showError('URL boş olamaz.'); return; }
+
+  const btn = document.getElementById('shorten-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Shortening…';
+
+  try {
+    const body = {
+      url,
+      alias: alias || null,
+      expiresAt: expires ? new Date(expires).toISOString() : null
+    };
+
+    const res = await fetch(`${API}/api/shorten`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      showError(data.error || 'Bir hata oluştu.');
+      return;
+    }
+
+    showResult(data);
+    loadLinks();
+
+    // clear form
+    document.getElementById('url-input').value = '';
+    document.getElementById('alias-input').value = '';
+    document.getElementById('expires-input').value = '';
+
+  } catch (e) {
+    showError('API\'ye ulaşılamadı. Sunucu çalışıyor mu?');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Shorten URL';
+  }
+}
+
+function showResult(data) {
+  const box = document.getElementById('result-box');
+  document.getElementById('result-url').textContent = data.shortUrl;
+  document.getElementById('result-code').textContent = `code: ${data.code}`;
+  document.getElementById('result-expires').textContent = data.expiresAt
+    ? `expires: ${new Date(data.expiresAt).toLocaleDateString()}`
+    : '';
+
+  box.classList.add('visible');
+  document.getElementById('error-box').classList.remove('visible');
+}
+
+function showError(msg) {
+  const box = document.getElementById('error-box');
+  box.textContent = '⚠ ' + msg;
+  box.classList.add('visible');
+  document.getElementById('result-box').classList.remove('visible');
+}
+
+function hideMessages() {
+  document.getElementById('result-box').classList.remove('visible');
+  document.getElementById('error-box').classList.remove('visible');
+}
+
+function copyResult() {
+  const url = document.getElementById('result-url').textContent;
+  navigator.clipboard.writeText(url).then(() => toast('Copied to clipboard!'));
+}
+
+async function loadLinks() {
+  try {
+    const res = await fetch(`${API}/api/links`);
+    const links = await res.json();
+
+    const list    = document.getElementById('links-list');
+    const empty   = document.getElementById('empty-state');
+    const counter = document.getElementById('links-count');
+
+    counter.textContent = `${links.length} link${links.length !== 1 ? 's' : ''}`;
+
+    if (links.length === 0) {
+      list.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+
+    empty.style.display = 'none';
+    list.innerHTML = links.map(l => `
+      <div class="link-row" id="row-${l.code}">
+        <div class="link-info">
+          <div>
+            <span class="link-short" onclick="copy('${l.shortUrl}')">${l.shortUrl}</span>
+            ${l.alias ? `<span class="badge" style="margin-left:8px">${l.alias}</span>` : ''}
+          </div>
+          <div class="link-original" title="${esc(l.originalUrl)}">${esc(l.originalUrl)}</div>
+        </div>
+        <div class="link-stats">
+          <div class="stat"><strong>${l.clickCount}</strong>clicks</div>
+          <button class="btn btn-danger" onclick="deleteLink('${l.code}')">✕</button>
+        </div>
+      </div>
+    `).join('');
+
+  } catch (e) {
+    console.error('Links yüklenemedi:', e);
+  }
+}
+
+async function deleteLink(code) {
+  if (!confirm(`"${code}" linkini silmek istiyor musun?`)) return;
+  try {
+    const res = await fetch(`${API}/api/links/${code}`, { method: 'DELETE' });
+    if (res.ok || res.status === 204) {
+      const row = document.getElementById(`row-${code}`);
+      row.style.transition = 'opacity 0.3s';
+      row.style.opacity = '0';
+      setTimeout(() => { row.remove(); loadLinks(); }, 300);
+    }
+  } catch (e) {
+    alert('Silme işlemi başarısız.');
+  }
+}
+
+function copy(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Copied!'));
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function esc(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Enter key on URL input
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') shorten();
+});
+
+// Check for ?error= param
+const errParam = new URLSearchParams(location.search).get('error');
+if (errParam === 'not_found') showError('Bu kısa link bulunamadı veya süresi doldu.');
+
+loadLinks();
+</script>
+</body>
+</html>

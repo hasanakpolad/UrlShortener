@@ -1,0 +1,11 @@
+services:
+  url-shortener:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data       # SQLite db persist
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__Default=Data Source=/app/data/urls.db
+    restart: unless-stopped
